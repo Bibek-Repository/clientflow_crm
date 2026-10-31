@@ -8,6 +8,8 @@ from backend.database.session import engine, Base, get_db
 from backend.models.customer import Customer
 from backend.schemas.customer import CustomerCreate, CustomerResponse
 
+from fastapi.middleware.cors import CORSMiddleware
+
 
 # Create database tables when the application starts
 @asynccontextmanager
@@ -22,6 +24,17 @@ app = FastAPI(
     description="Backend API for the ClientFlow CRM application.",
     version="0.3.0",
     lifespan=lifespan,
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
 )
 
 
