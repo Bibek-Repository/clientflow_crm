@@ -8,6 +8,9 @@ from backend.database.session import engine, Base, get_db
 from backend.models.customer import Customer
 from backend.schemas.customer import CustomerCreate, CustomerResponse
 
+from backend.models.lead import Lead
+from backend.schemas.lead import LeadCreate, LeadUpdate, LeadResponse
+
 from fastapi.middleware.cors import CORSMiddleware
 
 
@@ -211,4 +214,154 @@ def delete_customer(
     return {
         "message": "Customer deleted successfully",
         "customer_id": customer_id,
+    }
+
+
+# ==========================================
+# LEAD MANAGEMENT API
+# ==========================================
+
+
+# CREATE LEAD
+@app.post(
+    "/api/v1/leads",
+    response_model=LeadResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_lead(
+    lead: LeadCreate,
+    db: Session = Depends(get_db),
+):
+
+    # Check whether a lead with this email already exists
+    existing_lead = db.scalar(
+        select(Lead).where(
+            Lead.email == str(lead.email)
+        )
+    )
+
+    if existing_lead:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="A lead with this email already exists",
+        )
+
+    new_lead = Lead(
+        name=lead.name,
+        email=str(lead.email),
+        phone=lead.phone,
+        company=lead.company,
+        source=lead.source,
+        status=lead.status,
+    )
+
+    db.add(new_lead)
+    db.commit()
+    db.refresh(new_lead)
+
+    return new_lead
+
+
+# GET ALL LEADS
+@app.get(
+    "/api/v1/leads",
+    response_model=list[LeadResponse],
+)
+def get_leads(db: Session = Depends(get_db)):
+
+    statement = select(Lead).order_by(Lead.id)
+
+    leads = db.scalars(statement).all()
+
+    return leads
+
+
+# GET LEAD BY ID
+@app.get(
+    "/api/v1/leads/{lead_id}",
+    response_model=LeadResponse,
+)
+def get_lead(
+    lead_id: int,
+    db: Session = Depends(get_db),
+):
+
+    lead = db.get(Lead, lead_id)
+
+    if lead is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Lead not found",
+        )
+
+    return lead
+
+
+# UPDATE LEAD
+@app.put(
+    "/api/v1/leads/{lead_id}",
+    response_model=LeadResponse,
+)
+def update_lead(
+    lead_id: int,
+    updated_data: LeadUpdate,
+    db: Session = Depends(get_db),
+):
+
+    lead = db.get(Lead, lead_id)
+
+    if lead is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Lead not found",
+        )
+
+    # Check whether another lead is using this email
+    existing_lead = db.scalar(
+        select(Lead).where(
+            Lead.email == str(updated_data.email),
+            Lead.id != lead_id,
+        )
+    )
+
+    if existing_lead:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This email is already used by another lead",
+        )
+
+    lead.name = updated_data.name
+    lead.email = str(updated_data.email)
+    lead.phone = updated_data.phone
+    lead.company = updated_data.company
+    lead.source = updated_data.source
+    lead.status = updated_data.status
+
+    db.commit()
+    db.refresh(lead)
+
+    return lead
+
+
+# DELETE LEAD
+@app.delete("/api/v1/leads/{lead_id}")
+def delete_lead(
+    lead_id: int,
+    db: Session = Depends(get_db),
+):
+
+    lead = db.get(Lead, lead_id)
+
+    if lead is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Lead not found",
+        )
+
+    db.delete(lead)
+    db.commit()
+
+    return {
+        "message": "Lead deleted successfully",
+        "lead_id": lead_id,
     }
