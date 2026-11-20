@@ -20,6 +20,10 @@ import { RouterLink } from "vue-router";
       <RouterLink to="/customers" class="nav-link">
         <span>Customers</span>
       </RouterLink>
+
+      <RouterLink to="/leads" class="nav-link">
+        <span>Leads</span>
+      </RouterLink>
     </nav>
 
     <div class="sidebar-footer">

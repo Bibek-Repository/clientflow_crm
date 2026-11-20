@@ -1,7 +1,7 @@
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Depends, status
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.orm import Session
 
 from backend.database.session import engine, Base, get_db
@@ -364,4 +364,40 @@ def delete_lead(
     return {
         "message": "Lead deleted successfully",
         "lead_id": lead_id,
+    }
+
+# Dashboard Statistics API
+
+@app.get("/api/v1/dashboard/stats")
+def get_dashboard_stats(db: Session = Depends(get_db)):
+
+    # Count all customers
+    total_customers = db.scalar(
+        select(func.count()).select_from(Customer)
+    )
+
+    # Count all leads
+    total_leads = db.scalar(
+        select(func.count()).select_from(Lead)
+    )
+
+    # Count qualified leads
+    qualified_leads = db.scalar(
+        select(func.count()).select_from(Lead).where(
+            Lead.status == "Qualified"
+        )
+    )
+
+    # Count won leads
+    won_leads = db.scalar(
+        select(func.count()).select_from(Lead).where(
+            Lead.status == "Won"
+        )
+    )
+
+    return {
+        "total_customers": total_customers,
+        "total_leads": total_leads,
+        "qualified_leads": qualified_leads,
+        "won_leads": won_leads,
     }
